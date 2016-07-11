@@ -35,23 +35,40 @@ class DateHandler implements SubscribingHandlerInterface
     public static function getSubscribingMethods()
     {
         $methods = array();
-        $types = array('DateTime', 'DateInterval');
 
         foreach (array('json', 'xml', 'yml') as $format) {
             $methods[] = array(
-                'type' => 'DateTime',
+                'type' => \DateTime::class,
                 'direction' => GraphNavigator::DIRECTION_DESERIALIZATION,
                 'format' => $format,
             );
 
-            foreach ($types as $type) {
-                $methods[] = array(
-                    'type' => $type,
-                    'format' => $format,
-                    'direction' => GraphNavigator::DIRECTION_SERIALIZATION,
-                    'method' => 'serialize'.$type,
-                );
-            }
+            $methods[] = array(
+                'type' => \DateTimeImmutable::class,
+                'direction' => GraphNavigator::DIRECTION_DESERIALIZATION,
+                'format' => $format,
+            );
+
+            $methods[] = array(
+                'type' => \DateTime::class,
+                'format' => $format,
+                'direction' => GraphNavigator::DIRECTION_SERIALIZATION,
+                'method' => 'serializeDateTime',
+            );
+
+            $methods[] = array(
+                'type' => \DateTimeImmutable::class,
+                'format' => $format,
+                'direction' => GraphNavigator::DIRECTION_SERIALIZATION,
+                'method' => 'serializeDateTime',
+            );
+
+            $methods[] = array(
+                'type' => \DateInterval::class,
+                'format' => $format,
+                'direction' => GraphNavigator::DIRECTION_SERIALIZATION,
+                'method' => 'serializeDateInterval',
+            );
         }
 
         return $methods;
@@ -64,7 +81,7 @@ class DateHandler implements SubscribingHandlerInterface
         $this->xmlCData = $xmlCData;
     }
 
-    public function serializeDateTime(VisitorInterface $visitor, \DateTime $date, array $type, Context $context)
+    public function serializeDateTime(VisitorInterface $visitor, \DateTimeInterface $date, array $type, Context $context)
     {
         if ($visitor instanceof XmlSerializationVisitor && false === $this->xmlCData) {
             return $visitor->visitSimpleString($date->format($this->getFormat($type)), $type, $context);
@@ -81,6 +98,16 @@ class DateHandler implements SubscribingHandlerInterface
         }
 
         return $visitor->visitString($iso8601DateIntervalString, $type, $context);
+    }
+
+    public function deserializeDateTimeImmutableFromXml(XmlDeserializationVisitor $visitor, $data, array $type)
+    {
+        return \DateTimeImmutable::createFromMutable($this->deserializeDateTimeFromXml($visitor, $data, $type));
+    }
+
+    public function deserializeDateTimeImmutableFromJson(JsonDeserializationVisitor $visitor, $data, array $type)
+    {
+        return \DateTimeImmutable::createFromMutable($this->deserializeDateTimeFromJson($visitor, $data, $type));
     }
 
     public function deserializeDateTimeFromXml(XmlDeserializationVisitor $visitor, $data, array $type)
